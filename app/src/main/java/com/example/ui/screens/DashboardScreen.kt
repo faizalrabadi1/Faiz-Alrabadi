@@ -105,6 +105,12 @@ fun DashboardScreen() {
                             )
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
+                            settings.databaseEnabled = true
+                            settings.useWideViewPort = true
+                            settings.loadWithOverviewMode = true
+                            settings.builtInZoomControls = true
+                            settings.displayZoomControls = false
+                            settings.setSupportZoom(true)
                             settings.cacheMode = WebSettings.LOAD_DEFAULT
                             
                             addJavascriptInterface(BotJavascriptInterface { price ->
@@ -119,6 +125,29 @@ fun DashboardScreen() {
                                         (function() {
                                             if (window.botWsInjected) return;
                                             window.botWsInjected = true;
+                                            
+                                            window.pocketBotState = { isRunning: false };
+                                            window.startTrading = function() {
+                                                window.pocketBotState.isRunning = true;
+                                                if(window.botInterval) clearInterval(window.botInterval);
+                                                setTimeout(window.executeTradeSim, 500);
+                                                window.botInterval = setInterval(window.executeTradeSim, 15000); // Try trade every 15s to simulate
+                                            };
+                                            window.stopTrading = function() {
+                                                window.pocketBotState.isRunning = false;
+                                                if(window.botInterval) clearInterval(window.botInterval);
+                                            };
+                                            window.executeTradeSim = function() {
+                                                if(!window.pocketBotState.isRunning) return;
+                                                var btnCall = document.querySelector('.btn-call') || document.querySelector('.button--call');
+                                                var btnPut = document.querySelector('.btn-put') || document.querySelector('.button--put');
+                                                if(Math.random() > 0.5 && btnCall) {
+                                                    btnCall.click();
+                                                } else if (btnPut) {
+                                                    btnPut.click();
+                                                }
+                                            };
+
                                             const OriginalWebSocket = window.WebSocket;
                                             window.WebSocket = function(url, protocols) {
                                                 let ws;
@@ -130,7 +159,6 @@ fun DashboardScreen() {
                                                 
                                                 ws.addEventListener('message', function(event) {
                                                     if (window.AndroidBot) {
-                                                        // Send data to Kotlin
                                                         window.AndroidBot.onWebSocketMessage(event.data ? event.data.toString() : "");
                                                     }
                                                 });
@@ -142,7 +170,7 @@ fun DashboardScreen() {
                                             window.WebSocket.OPEN = OriginalWebSocket.OPEN;
                                             window.WebSocket.CLOSING = OriginalWebSocket.CLOSING;
                                             window.WebSocket.CLOSED = OriginalWebSocket.CLOSED;
-                                            console.log('Pocket Bot WS Injected');
+                                            console.log('Pocket Bot JS Injected');
                                         })();
                                     """.trimIndent()
                                     view?.evaluateJavascript(jsInject, null)
@@ -377,11 +405,13 @@ fun DashboardScreen() {
                                 if (isBotRunning) {
                                     val strategiesMerged = selectedStrategies.joinToString(" + ")
                                     val durationStr = durationLabels[selectedDuration] ?: selectedDuration
+                                    webViewRef?.evaluateJavascript("if(window.startTrading) window.startTrading();", null)
                                     snackbarHostState.showSnackbar(
                                         message = "تم تفعيل البوت ($strategiesMerged) | مدة: $durationStr",
                                         duration = SnackbarDuration.Short
                                     )
                                 } else {
+                                    webViewRef?.evaluateJavascript("if(window.stopTrading) window.stopTrading();", null)
                                     snackbarHostState.showSnackbar(
                                         message = "تم إيقاف البوت",
                                         duration = SnackbarDuration.Short
