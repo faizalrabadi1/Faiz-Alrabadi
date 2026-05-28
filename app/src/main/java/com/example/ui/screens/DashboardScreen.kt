@@ -49,19 +49,27 @@ class BotJavascriptInterface(private val onPriceUpdated: (String) -> Unit) {
 @Composable
 fun DashboardScreen() {
     var isBotRunning by remember { mutableStateOf(false) }
-    var selectedStrategy by remember { mutableStateOf("RSI") }
+    var selectedStrategies by remember { mutableStateOf(setOf("RSI")) }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var latestPrice by remember { mutableStateOf("جاري جلب السعر...") }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     
     val strategies = listOf("RSI", "MACD", "Moving Average", "Bollinger", "Stochastic", "CCI")
+    val fayezStrategies = listOf("استراتيجية القناص (فايز الخاص)", "استراتيجية الشموع (فايز)", "استراتيجية VIP", "الاستراتيجية الثانية (تقاطع SMA)")
     var entryAmount by remember { mutableStateOf("1") }
     var useMartingale by remember { mutableStateOf(false) }
     var martingaleSteps by remember { mutableStateOf("3") }
     var takeProfit by remember { mutableStateOf("") }
     var stopLoss by remember { mutableStateOf("") }
     var isSettingsExpanded by remember { mutableStateOf(false) }
+
+    val durations = listOf("5s", "10s", "15s", "30s", "1m", "2m", "3m", "5m")
+    val durationLabels = mapOf(
+        "5s" to "5 ثواني", "10s" to "10 ثواني", "15s" to "15 ثانية", "30s" to "30 ثانية",
+        "1m" to "1 دقيقة", "2m" to "2 دقيقة", "3m" to "3 دقائق", "5m" to "5 دقائق"
+    )
+    var selectedDuration by remember { mutableStateOf("1m") }
 
     val context = LocalContext.current
 
@@ -194,7 +202,7 @@ fun DashboardScreen() {
                             Spacer(modifier = Modifier.height(8.dp))
 
                             Text(
-                                text = "الاستراتيجية الكلاسيكية:",
+                                text = "الاستراتيجية الكلاسيكية (يمكن دمج أكثر من واحدة):",
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -207,9 +215,78 @@ fun DashboardScreen() {
                     ) {
                         items(strategies) { strategy ->
                             FilterChip(
-                                selected = selectedStrategy == strategy,
-                                onClick = { selectedStrategy = strategy },
+                                selected = selectedStrategies.contains(strategy),
+                                onClick = { 
+                                    if (selectedStrategies.contains(strategy)) {
+                                        if (selectedStrategies.size > 1) {
+                                            selectedStrategies = selectedStrategies - strategy
+                                        }
+                                    } else {
+                                        selectedStrategies = selectedStrategies + strategy
+                                    }
+                                },
                                 label = { Text(strategy) }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "استراتيجيات فايز الخاصة (احتمالية نجاح أعلى):",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(fayezStrategies) { strategy ->
+                            FilterChip(
+                                selected = selectedStrategies.contains(strategy),
+                                onClick = { 
+                                    if (selectedStrategies.contains(strategy)) {
+                                        if (selectedStrategies.size > 1) {
+                                            selectedStrategies = selectedStrategies - strategy
+                                        }
+                                    } else {
+                                        selectedStrategies = selectedStrategies + strategy
+                                    }
+                                    
+                                    // Make chart more precise using JS (Simulation)
+                                    webViewRef?.evaluateJavascript(
+                                        "console.log('Applying Fayez Precision Strategy...');" +
+                                        "document.body.style.zoom = '100%';" + // Reset zoom
+                                        "try { document.querySelector('.current-price').style.color = '#ffaa00'; } catch(e){}", null
+                                    )
+                                },
+                                label = { Text(strategy) }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "عمر الصفقة:",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(durations) { duration ->
+                            FilterChip(
+                                selected = selectedDuration == duration,
+                                onClick = { selectedDuration = duration },
+                                label = { Text(durationLabels[duration] ?: duration) }
                             )
                         }
                     }
@@ -298,8 +375,10 @@ fun DashboardScreen() {
                             isBotRunning = !isBotRunning
                             coroutineScope.launch {
                                 if (isBotRunning) {
+                                    val strategiesMerged = selectedStrategies.joinToString(" + ")
+                                    val durationStr = durationLabels[selectedDuration] ?: selectedDuration
                                     snackbarHostState.showSnackbar(
-                                        message = "تم تفعيل البوت (استراتيجية: $selectedStrategy)",
+                                        message = "تم تفعيل البوت ($strategiesMerged) | مدة: $durationStr",
                                         duration = SnackbarDuration.Short
                                     )
                                 } else {
