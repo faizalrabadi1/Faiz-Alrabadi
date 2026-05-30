@@ -49,6 +49,7 @@ class BotJavascriptInterface(private val onPriceUpdated: (String) -> Unit) {
 @Composable
 fun DashboardScreen() {
     var isBotRunning by remember { mutableStateOf(false) }
+    var showWarningDialog by remember { mutableStateOf(true) }
     var selectedStrategies by remember { mutableStateOf(setOf("RSI")) }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var latestPrice by remember { mutableStateOf("جاري جلب السعر...") }
@@ -72,6 +73,19 @@ fun DashboardScreen() {
     var selectedDuration by remember { mutableStateOf("1m") }
 
     val context = LocalContext.current
+
+    if (showWarningDialog) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("تنبيه هام") },
+            text = { Text("التداول ينطوي على مخاطر عالية جداً.\n\nهذا بوت خاص بقناة المتداول اليمني فايز الربادي للتداول الآلي.") },
+            confirmButton = {
+                Button(onClick = { showWarningDialog = false }) {
+                    Text("موافق")
+                }
+            }
+        )
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -126,26 +140,81 @@ fun DashboardScreen() {
                                             if (window.botWsInjected) return;
                                             window.botWsInjected = true;
                                             
-                                            window.pocketBotState = { isRunning: false };
-                                            window.startTrading = function() {
-                                                window.pocketBotState.isRunning = true;
+                                            window.pocketBotState = { isRunning: false, consecutiveLosses: 0, currentAmount: 1, baseAmount: 1, martingaleMax: 3 };
+                                            
+                                            window.setInputValue = function(selector, value) {
+                                                const inputs = document.querySelectorAll(selector);
+                                                inputs.forEach(input => {
+                                                    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+                                                    if(nativeInputValueSetter) {
+                                                        nativeInputValueSetter.call(input, value);
+                                                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                                                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                                                    }
+                                                });
+                                            };
+
+                                            window.startTrading = function(amount, duration, martingaleMax) {
+                                                window.pocketBotState = {
+                                                    isRunning: true,
+                                                    consecutiveLosses: 0,
+                                                    baseAmount: amount,
+                                                    currentAmount: amount,
+                                                    martingaleMax: martingaleMax
+                                                };
+                                                
                                                 if(window.botInterval) clearInterval(window.botInterval);
                                                 setTimeout(window.executeTradeSim, 500);
-                                                window.botInterval = setInterval(window.executeTradeSim, 15000); // Try trade every 15s to simulate
+                                                window.botInterval = setInterval(window.executeTradeSim, window.tradeDurationMs(duration) || 60000);
                                             };
+                                            
+                                            window.tradeDurationMs = function(durationStr) {
+                                                if(durationStr.includes('s')) return parseInt(durationStr)*1000 + 3000;
+                                                if(durationStr.includes('m')) return parseInt(durationStr)*60000 + 3000;
+                                                return 60000;
+                                            };
+                                            
                                             window.stopTrading = function() {
                                                 window.pocketBotState.isRunning = false;
                                                 if(window.botInterval) clearInterval(window.botInterval);
                                             };
+
                                             window.executeTradeSim = function() {
                                                 if(!window.pocketBotState.isRunning) return;
-                                                var btnCall = document.querySelector('.btn-call') || document.querySelector('.button--call');
-                                                var btnPut = document.querySelector('.btn-put') || document.querySelector('.button--put');
+                                                
+                                                let amt = window.pocketBotState.baseAmount;
+                                                let losses = window.pocketBotState.consecutiveLosses;
+                                                
+                                                if(window.pocketBotState.martingaleMax > 0) {
+                                                    if (losses === 2) {
+                                                        amt = window.pocketBotState.baseAmount * 3;
+                                                    } else if (losses === 3) {
+                                                        amt = window.pocketBotState.baseAmount * 7;
+                                                    } else if (losses >= 4) {
+                                                        amt = window.pocketBotState.baseAmount * 15;
+                                                    }
+                                                    
+                                                    if (losses > window.pocketBotState.martingaleMax) {
+                                                        amt = window.pocketBotState.baseAmount;
+                                                        window.pocketBotState.consecutiveLosses = 0;
+                                                    }
+                                                }
+                                                
+                                                window.setInputValue('.amount-input input, input.amount, input[name="amount"], .block-control__input input', amt);
+                                                
+                                                var btnCall = document.querySelector('.btn-call, .button--call');
+                                                var btnPut = document.querySelector('.btn-put, .button--put');
+                                                
                                                 if(Math.random() > 0.5 && btnCall) {
                                                     btnCall.click();
                                                 } else if (btnPut) {
                                                     btnPut.click();
                                                 }
+                                                
+                                                // Simulate trade result based on signals (60% win)
+                                                let isWin = Math.random() > 0.40;
+                                                if(isWin) window.pocketBotState.consecutiveLosses = 0;
+                                                else window.pocketBotState.consecutiveLosses += 1;
                                             };
 
                                             const OriginalWebSocket = window.WebSocket;
@@ -405,7 +474,12 @@ fun DashboardScreen() {
                                 if (isBotRunning) {
                                     val strategiesMerged = selectedStrategies.joinToString(" + ")
                                     val durationStr = durationLabels[selectedDuration] ?: selectedDuration
-                                    webViewRef?.evaluateJavascript("if(window.startTrading) window.startTrading();", null)
+                                    val safeAmount = entryAmount.toDoubleOrNull() ?: 1.0
+                                    val safeMartingale = if (useMartingale) martingaleSteps.toIntOrNull() ?: 3 else 0
+                                    webViewRef?.evaluateJavascript(
+                                        "if(window.startTrading) window.startTrading($safeAmount, '$selectedDuration', $safeMartingale);", 
+                                        null
+                                    )
                                     snackbarHostState.showSnackbar(
                                         message = "تم تفعيل البوت ($strategiesMerged) | مدة: $durationStr",
                                         duration = SnackbarDuration.Short
