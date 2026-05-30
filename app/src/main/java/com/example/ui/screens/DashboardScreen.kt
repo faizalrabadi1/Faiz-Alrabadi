@@ -65,10 +65,16 @@ fun DashboardScreen() {
     var stopLoss by remember { mutableStateOf("") }
     var isSettingsExpanded by remember { mutableStateOf(false) }
 
-    val durations = listOf("5s", "10s", "15s", "30s", "1m", "2m", "3m", "5m")
+    val durations = listOf(
+        "1s", "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s", "10s", 
+        "13s", "15s", "18s", "22s", "30s", "34s", "49s", "1m", "144s", "2m", "3m", "5m"
+    )
     val durationLabels = mapOf(
-        "5s" to "5 ثواني", "10s" to "10 ثواني", "15s" to "15 ثانية", "30s" to "30 ثانية",
-        "1m" to "1 دقيقة", "2m" to "2 دقيقة", "3m" to "3 دقائق", "5m" to "5 دقائق"
+        "1s" to "ثانية واحدة", "2s" to "ثانيتين", "3s" to "3 ثواني", "4s" to "4 ثواني",
+        "5s" to "5 ثواني", "6s" to "6 ثواني", "7s" to "7 ثواني", "8s" to "8 ثواني", "9s" to "9 ثواني",
+        "10s" to "10 ثواني", "13s" to "13 ثانية", "15s" to "15 ثانية", "18s" to "18 ثانية",
+        "22s" to "22 ثانية", "30s" to "30 ثانية", "34s" to "34 ثانية", "49s" to "49 ثانية",
+        "1m" to "1 دقيقة", "144s" to "144 ثانية", "2m" to "2 دقيقة", "3m" to "3 دقائق", "5m" to "5 دقائق"
     )
     var selectedDuration by remember { mutableStateOf("1m") }
 
