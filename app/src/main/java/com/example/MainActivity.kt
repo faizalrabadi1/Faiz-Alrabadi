@@ -43,11 +43,21 @@ fun AppNavigation() {
                     navController.navigate("dashboard") {
                         popUpTo("auth") { inclusive = true }
                     }
+                },
+                onNavigateToAdmin = {
+                    navController.navigate("admin")
                 }
             )
         }
         composable("dashboard") {
             DashboardScreen()
+        }
+        composable("admin") {
+            com.example.ui.screens.AdminScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
         }
     }
 }

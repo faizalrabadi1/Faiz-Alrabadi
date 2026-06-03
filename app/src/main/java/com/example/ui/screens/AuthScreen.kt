@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -8,14 +9,27 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.utils.AccessManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun AuthScreen(onNavigateToDashboard: () -> Unit) {
+fun AuthScreen(onNavigateToDashboard: () -> Unit, onNavigateToAdmin: () -> Unit) {
+    val context = LocalContext.current
+    val sharedPrefs = context.getSharedPreferences("PocketBotPrefs", Context.MODE_PRIVATE)
+    
+    // Check existing valid code
+    LaunchedEffect(Unit) {
+        val savedCode = sharedPrefs.getString("ACCESS_CODE", null)
+        if (savedCode != null && AccessManager.isValid(savedCode)) {
+            onNavigateToDashboard()
+        }
+    }
+
     var accountId by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -46,7 +60,7 @@ fun AuthScreen(onNavigateToDashboard: () -> Unit) {
         Spacer(modifier = Modifier.height(8.dp))
         
         Text(
-            text = "يرجى التحقق من تسجيلك عبر رابط الإحالة الخاص بنا للمتابعة.",
+            text = "يرجى إدخال كود الإحالة الصالح للمتابعة والدخول إلى نظام التداول.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -60,8 +74,7 @@ fun AuthScreen(onNavigateToDashboard: () -> Unit) {
                 accountId = it
                 errorMessage = null 
             },
-            label = { Text("معرف الحساب (Account ID)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            label = { Text("كود الإحالة (Access Code)") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             isError = errorMessage != null,
@@ -72,23 +85,36 @@ fun AuthScreen(onNavigateToDashboard: () -> Unit) {
 
         Button(
             onClick = {
-                if (accountId.length < 5) {
-                    errorMessage = "الرجاء إدخال معرف صحيح"
+                val inputCode = accountId.trim()
+                if (inputCode.isEmpty()) {
+                    errorMessage = "الرجاء إدخال الكود"
                     return@Button
                 }
                 
+                if (AccessManager.isAdmin(inputCode)) {
+                    onNavigateToAdmin()
+                    return@Button
+                }
+
                 coroutineScope.launch {
                     isLoading = true
-                    // Simulate network verification delay
-                    delay(1500)
+                    delay(1000) // Simulate verification delay
                     isLoading = false
-                    // Proceed
-                    onNavigateToDashboard()
+                    
+                    if (AccessManager.isValid(inputCode)) {
+                        sharedPrefs.edit().putString("ACCESS_CODE", inputCode).apply()
+                        onNavigateToDashboard()
+                    } else {
+                        errorMessage = "الكود غير صالح أو منتهي الصلاحية"
+                    }
                 }
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
+            colors = ButtonDefaults.buttonColors(
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
             enabled = !isLoading
         ) {
             if (isLoading) {
