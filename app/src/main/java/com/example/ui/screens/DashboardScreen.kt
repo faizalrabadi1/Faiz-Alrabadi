@@ -228,10 +228,13 @@ fun DashboardScreen() {
                                                 var btnCall = document.querySelector('.btn-call, .button--call');
                                                 var btnPut = document.querySelector('.btn-put, .button--put');
                                                 
-                                                if(Math.random() > 0.5 && btnCall) {
-                                                    btnCall.click();
-                                                } else if (btnPut) {
-                                                    btnPut.click();
+                                                var targetBtn = (Math.random() > 0.5 && btnCall) ? btnCall : btnPut;
+                                                var numClicks = (losses === 2) ? 3 : 1;
+                                                
+                                                for(let i=0; i<numClicks; i++) {
+                                                    setTimeout(function() {
+                                                        if (targetBtn) targetBtn.click();
+                                                    }, i * 300);
                                                 }
                                                 
                                                 // Simulate trade result based on signals (60% win)
