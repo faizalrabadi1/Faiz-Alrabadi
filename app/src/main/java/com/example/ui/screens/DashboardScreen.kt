@@ -60,6 +60,7 @@ fun DashboardScreen() {
     
     val strategies = listOf("RSI", "MACD", "Moving Average", "Bollinger", "Stochastic", "CCI")
     val fayezStrategies = listOf("استراتيجية القناص (فايز الخاص)", "استراتيجية الشموع (فايز)", "استراتيجية VIP", "الاستراتيجية الثانية (تقاطع SMA)")
+    val statsStrategies = listOf("الانحدار الخطي (Linear Regression)", "الارتداد المعياري (Z-Score)", "سلاسل ماركوف (Markov Chains)", "الاحتمالية البايزية (Bayesian Probability)", "توزيع جاوس (Gaussian Distribution)")
     var entryAmount by remember { mutableStateOf("1") }
     var useMartingale by remember { mutableStateOf(false) }
     var martingaleSteps by remember { mutableStateOf("3") }
@@ -431,6 +432,37 @@ fun DashboardScreen() {
                                         "document.body.style.zoom = '100%';" + // Reset zoom
                                         "try { document.querySelector('.current-price').style.color = '#ffaa00'; } catch(e){}", null
                                     )
+                                },
+                                label = { Text(strategy) }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "استراتيجيات إحصائية رياضية احترافية:",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(statsStrategies) { strategy ->
+                            FilterChip(
+                                selected = selectedStrategies.contains(strategy),
+                                onClick = { 
+                                    if (selectedStrategies.contains(strategy)) {
+                                        if (selectedStrategies.size > 1) {
+                                            selectedStrategies = selectedStrategies - strategy
+                                        }
+                                    } else {
+                                        selectedStrategies = selectedStrategies + strategy
+                                    }
                                 },
                                 label = { Text(strategy) }
                             )
