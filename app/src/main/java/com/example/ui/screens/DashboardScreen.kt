@@ -231,6 +231,13 @@ fun DashboardScreen() {
                                                 var targetBtn = (Math.random() > 0.5 && btnCall) ? btnCall : btnPut;
                                                 var numClicks = (losses === 2) ? 3 : 1;
                                                 
+                                                let tradeNum = losses + 1;
+                                                let fibs = [5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181, 6765];
+                                                let fibIdx = fibs.indexOf(tradeNum);
+                                                if (fibIdx !== -1) {
+                                                    numClicks = fibIdx + 2;
+                                                }
+                                                
                                                 for(let i=0; i<numClicks; i++) {
                                                     setTimeout(function() {
                                                         if (targetBtn) targetBtn.click();
