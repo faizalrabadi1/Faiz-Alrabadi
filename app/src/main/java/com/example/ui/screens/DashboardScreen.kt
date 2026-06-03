@@ -472,18 +472,58 @@ fun DashboardScreen() {
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "عمر الصفقة:",
+                        text = "عمر الصفقة: التحليل السريع (1 - 15 ثانية)",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    
                     Spacer(modifier = Modifier.height(8.dp))
-                    
                     LazyRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(durations) { duration ->
+                        items(durations.filter { listOf("1s", "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s", "10s", "13s", "15s").contains(it) }) { duration ->
+                            FilterChip(
+                                selected = selectedDuration == duration,
+                                onClick = { selectedDuration = duration },
+                                label = { Text(durationLabels[duration] ?: duration) }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "عمر الصفقة: العادي (20 ثانية - 1 دقيقة)",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(durations.filter { listOf("18s", "22s", "30s", "34s", "49s", "1m").contains(it) }) { duration ->
+                            FilterChip(
+                                selected = selectedDuration == duration,
+                                onClick = { selectedDuration = duration },
+                                label = { Text(durationLabels[duration] ?: duration) }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "عمر الصفقة: البطيئ (2 - 5 دقائق)",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(durations.filter { listOf("144s", "2m", "3m", "5m").contains(it) }) { duration ->
                             FilterChip(
                                 selected = selectedDuration == duration,
                                 onClick = { selectedDuration = duration },
