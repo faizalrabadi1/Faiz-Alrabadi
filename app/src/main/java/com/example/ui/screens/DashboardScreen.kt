@@ -62,6 +62,11 @@ fun DashboardScreen() {
     val fayezStrategies = listOf("استراتيجية القناص (فايز الخاص)", "استراتيجية الشموع (فايز)", "استراتيجية VIP", "الاستراتيجية الثانية (تقاطع SMA)")
     val statsStrategies = listOf("الانحدار الخطي (Linear Regression)", "الارتداد المعياري (Z-Score)", "سلاسل ماركوف (Markov Chains)", "الاحتمالية البايزية (Bayesian Probability)", "توزيع جاوس (Gaussian Distribution)")
     var entryAmount by remember { mutableStateOf("1") }
+    var riskPercentage by remember { mutableStateOf("2") }
+    
+    val currencyPairs = listOf("EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "USD/CHF", "NZD/USD", "OTC (Crypto)", "OTC (Stocks)")
+    var selectedCurrencyPairs by remember { mutableStateOf(setOf("EUR/USD")) }
+
     var useMartingale by remember { mutableStateOf(false) }
     var martingaleSteps by remember { mutableStateOf("3") }
     var takeProfit by remember { mutableStateOf("") }
@@ -534,14 +539,58 @@ fun DashboardScreen() {
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    OutlinedTextField(
-                        value = entryAmount,
-                        onValueChange = { entryAmount = it },
-                        label = { Text("مبلغ الدخول الأساسي ($)") },
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = entryAmount,
+                            onValueChange = { entryAmount = it },
+                            label = { Text("مبلغ الدخول الأساسي ($)") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                        OutlinedTextField(
+                            value = riskPercentage,
+                            onValueChange = { riskPercentage = it },
+                            label = { Text("نسبة المخاطرة (%)") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "أزواج العملات المفضلة:",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(currencyPairs) { pair ->
+                            FilterChip(
+                                selected = selectedCurrencyPairs.contains(pair),
+                                onClick = { 
+                                    if (selectedCurrencyPairs.contains(pair)) {
+                                        if (selectedCurrencyPairs.size > 1) {
+                                            selectedCurrencyPairs = selectedCurrencyPairs - pair
+                                        }
+                                    } else {
+                                        selectedCurrencyPairs = selectedCurrencyPairs + pair
+                                    }
+                                },
+                                label = { Text(pair) }
+                            )
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
