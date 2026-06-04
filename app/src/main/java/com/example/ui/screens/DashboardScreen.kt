@@ -123,8 +123,8 @@ fun DashboardScreen() {
             TopAppBar(
                 title = { Text("لوحة تحكم البوت") },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.primary,
                 )
             )
         }
@@ -333,7 +333,7 @@ fun DashboardScreen() {
                             Text(
                                 "${aiSentiment.toInt()}% نسبة النجاح المتوقعة",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = if (aiSentiment > 70f) Color(0xFF4CAF50) else Color(0xFFE91E63)
+                                color = if (aiSentiment > 70f) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
@@ -343,7 +343,7 @@ fun DashboardScreen() {
                                 .fillMaxWidth()
                                 .height(8.dp)
                                 .clip(RoundedCornerShape(4.dp)),
-                            color = if (aiSentiment > 70f) Color(0xFF4CAF50) else Color(0xFFE91E63),
+                            color = if (aiSentiment > 70f) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
                             trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                         )
                     }

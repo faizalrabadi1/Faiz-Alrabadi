@@ -30,9 +30,9 @@ fun PortfolioStatsChart() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 12.dp)
-            .clip(RoundedCornerShape(12.dp)),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        tonalElevation = 4.dp
+            .clip(RoundedCornerShape(16.dp)),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shadowElevation = 8.dp
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -40,8 +40,8 @@ fun PortfolioStatsChart() {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("أداء المحفظة الأسبوعي", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                Text("نجاح: 76%", style = MaterialTheme.typography.labelLarge, color = Color(0xFF4CAF50))
+                Text("أداء المحفظة الأسبوعي", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                Text("نجاح: 76%", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.tertiary)
             }
             
             Spacer(modifier = Modifier.height(16.dp))
