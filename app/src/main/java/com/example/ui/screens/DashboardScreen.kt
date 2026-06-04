@@ -73,6 +73,7 @@ fun DashboardScreen() {
     var takeProfit by remember { mutableStateOf("") }
     var stopLoss by remember { mutableStateOf("") }
     var isSettingsExpanded by remember { mutableStateOf(false) }
+    var isBottomPanelExpanded by remember { mutableStateOf(false) }
 
     val durations = listOf(
         "1s", "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s", "10s", 
@@ -302,24 +303,58 @@ fun DashboardScreen() {
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
                 color = MaterialTheme.colorScheme.surfaceVariant,
-                tonalElevation = 8.dp
+                shadowElevation = 8.dp
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
                 ) {
-                    // ميزة 1: رادار الذكاء الاصطناعي للمتداول اليمني
-                    Column(
+                    // Header for collapsing
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 12.dp)
-                            .background(
-                                MaterialTheme.colorScheme.primaryContainer,
-                                RoundedCornerShape(12.dp)
-                            )
-                            .padding(12.dp)
+                            .clickable { isBottomPanelExpanded = !isBottomPanelExpanded }
+                            .padding(bottom = 8.dp),
+                        contentAlignment = Alignment.Center
                     ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                modifier = Modifier
+                                    .width(40.dp)
+                                    .height(4.dp)
+                                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(2.dp))
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                                Icon(
+                                    imageVector = if (isBottomPanelExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                                    contentDescription = "Expand/Collapse",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (isBottomPanelExpanded) "إخفاء لوحة التحكم" else "عرض إعدادات البوت والتحليلات",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+
+                    AnimatedVisibility(visible = isBottomPanelExpanded) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            // ميزة 1: رادار الذكاء الاصطناعي للمتداول اليمني
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.primaryContainer,
+                                        RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(12.dp)
+                            ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -703,6 +738,8 @@ fun DashboardScreen() {
                     Spacer(modifier = Modifier.height(24.dp))
                         }
                     }
+                    } // Ends internal column for isBottomPanelExpanded
+                    } // Ends AnimatedVisibility for isBottomPanelExpanded
 
                     Spacer(modifier = Modifier.height(8.dp))
 
