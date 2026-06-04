@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import android.annotation.SuppressLint
+import com.example.ui.components.PortfolioStatsChart
 import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebSettings
@@ -346,6 +347,9 @@ fun DashboardScreen() {
                             trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    PortfolioStatsChart()
 
                     Row(
                         modifier = Modifier
