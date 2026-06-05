@@ -171,7 +171,21 @@ fun DashboardScreen() {
                                             if (window.botWsInjected) return;
                                             window.botWsInjected = true;
                                             
-                                            window.pocketBotState = { isRunning: false, consecutiveLosses: 0, currentAmount: 1, baseAmount: 1, martingaleMax: 3 };
+                                            window.pocketBotState = { isRunning: false, consecutiveLosses: 0, currentAmount: 1, baseAmount: 1, martingaleMax: 3, strategies: '', lastBalance: null };
+                                            window.priceHistory = [];
+                                            
+                                            setInterval(() => {
+                                                let el = document.querySelector('.current-price-value, .quote__val, .price-row__value, .price, text[class*="price"]');
+                                                if(el) {
+                                                    let p = parseFloat((el.innerText || el.textContent).replace(/[^0-9.]/g, ''));
+                                                    if(!isNaN(p) && p > 0) {
+                                                        if(window.priceHistory.length === 0 || window.priceHistory[window.priceHistory.length - 1] !== p) {
+                                                            window.priceHistory.push(p);
+                                                            if(window.priceHistory.length > 60) window.priceHistory.shift();
+                                                        }
+                                                    }
+                                                }
+                                            }, 1000);
                                             
                                             window.setInputValue = function(selector, value) {
                                                 const inputs = document.querySelectorAll(selector);
@@ -185,13 +199,15 @@ fun DashboardScreen() {
                                                 });
                                             };
 
-                                            window.startTrading = function(amount, duration, martingaleMax) {
+                                            window.startTrading = function(amount, duration, martingaleMax, strats) {
                                                 window.pocketBotState = {
                                                     isRunning: true,
                                                     consecutiveLosses: 0,
                                                     baseAmount: amount,
                                                     currentAmount: amount,
-                                                    martingaleMax: martingaleMax
+                                                    martingaleMax: martingaleMax,
+                                                    strategies: strats || '',
+                                                    lastBalance: null
                                                 };
                                                 
                                                 if(window.botInterval) clearInterval(window.botInterval);
@@ -216,14 +232,28 @@ fun DashboardScreen() {
                                                 let amt = window.pocketBotState.baseAmount;
                                                 let losses = window.pocketBotState.consecutiveLosses;
                                                 
-                                                if(window.pocketBotState.martingaleMax > 0) {
-                                                    if (losses === 2) {
-                                                        amt = window.pocketBotState.baseAmount * 3;
-                                                    } else if (losses === 3) {
-                                                        amt = window.pocketBotState.baseAmount * 7;
-                                                    } else if (losses >= 4) {
-                                                        amt = window.pocketBotState.baseAmount * 15;
+                                                // Real balance tracking for martingale
+                                                let balanceEl = document.querySelector('.balance-info__value, .balance__value, .current-balance, [data-qa="balance-value"]');
+                                                if(balanceEl) {
+                                                    let currentBalance = parseFloat((balanceEl.innerText || balanceEl.textContent).replace(/[^0-9.-]/g, ''));
+                                                    if (!isNaN(currentBalance)) {
+                                                        if(window.pocketBotState.lastBalance !== null) {
+                                                            if(currentBalance > window.pocketBotState.lastBalance) {
+                                                                losses = 0; // Won!
+                                                            } else if (currentBalance < window.pocketBotState.lastBalance) {
+                                                                losses += 1; // Lost!
+                                                            }
+                                                        }
+                                                        window.pocketBotState.lastBalance = currentBalance;
                                                     }
+                                                }
+                                                window.pocketBotState.consecutiveLosses = losses;
+                                                
+                                                if(window.pocketBotState.martingaleMax > 0) {
+                                                    if (losses === 1) amt = window.pocketBotState.baseAmount * 2;
+                                                    else if (losses === 2) amt = window.pocketBotState.baseAmount * 5;
+                                                    else if (losses === 3) amt = window.pocketBotState.baseAmount * 11;
+                                                    else if (losses >= 4) amt = window.pocketBotState.baseAmount * 25;
                                                     
                                                     if (losses > window.pocketBotState.martingaleMax) {
                                                         amt = window.pocketBotState.baseAmount;
@@ -235,52 +265,83 @@ fun DashboardScreen() {
                                                 
                                                 var btnCall = document.querySelector('.btn-call, .button--call');
                                                 var btnPut = document.querySelector('.btn-put, .button--put');
+                                                var targetBtn = null;
                                                 
-                                                var targetBtn = (Math.random() > 0.5 && btnCall) ? btnCall : btnPut;
-                                                var numClicks = (losses === 2) ? 3 : 1;
+                                                let strats = window.pocketBotState.strategies.toLowerCase();
+                                                let prices = window.priceHistory;
                                                 
-                                                let tradeNum = losses + 1;
-                                                let fibs = [5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181, 6765];
-                                                let fibIdx = fibs.indexOf(tradeNum);
-                                                if (fibIdx !== -1) {
-                                                    numClicks = fibIdx + 2;
+                                                // REAL TECHNICAL ANALYSIS
+                                                if (prices.length > 5) {
+                                                    let current = prices[prices.length - 1];
+                                                    let sma5 = prices.slice(-5).reduce((a,b)=>a+b,0)/5;
+                                                    let sma14 = prices.slice(-Math.min(14,prices.length)).reduce((a,b)=>a+b,0)/Math.min(14,prices.length);
+                                                    
+                                                    let isCall = false;
+                                                    let isPut = false;
+                                                    
+                                                    if (strats.includes('rsi')) {
+                                                        let u=0, d=0;
+                                                        for(let i=1; i<Math.min(14,prices.length); i++){
+                                                            let dif = prices[prices.length-i] - prices[prices.length-i-1];
+                                                            if(dif>0) u+=dif; else d-=dif;
+                                                        }
+                                                        let rs = u/(d===0?0.001:d);
+                                                        let rsi = 100 - (100/(1+rs));
+                                                        if (rsi < 30) { isCall = true; } // Oversold
+                                                        if (rsi > 70) { isPut = true; }  // Overbought
+                                                    }
+                                                    if (strats.includes('sma') || strats.includes('moving') || strats.includes('تقاطع')) {
+                                                        if (sma5 > sma14) isCall = true;
+                                                        if (sma5 < sma14) isPut = true;
+                                                    }
+                                                    if (strats.includes('قناص') || strats.includes('vip')) {
+                                                        let momentum = current - prices[prices.length - 5];
+                                                        if (momentum > 0) { isCall = true; }
+                                                        else { isPut = true; }
+                                                    }
+                                                    
+                                                    if (!isCall && !isPut) {
+                                                        targetBtn = (Math.random() > 0.5) ? btnCall : btnPut;
+                                                    } else {
+                                                        if (isCall && !isPut) targetBtn = btnCall;
+                                                        else if (isPut && !isCall) targetBtn = btnPut;
+                                                        else targetBtn = (Math.random() > 0.5) ? btnCall : btnPut;
+                                                    }
+                                                } else {
+                                                    targetBtn = (Math.random() > 0.5) ? btnCall : btnPut;
                                                 }
                                                 
-                                                for(let i=0; i<numClicks; i++) {
-                                                    setTimeout(function() {
-                                                        if (targetBtn) targetBtn.click();
-                                                    }, i * 300);
+                                                if (targetBtn) {
+                                                    targetBtn.click();
                                                 }
-                                                
-                                                // Simulate trade result based on signals (60% win)
-                                                let isWin = Math.random() > 0.40;
-                                                if(isWin) window.pocketBotState.consecutiveLosses = 0;
-                                                else window.pocketBotState.consecutiveLosses += 1;
                                             };
 
                                             const OriginalWebSocket = window.WebSocket;
                                             window.WebSocket = function(url, protocols) {
-                                                let ws;
-                                                if (protocols) {
-                                                     ws = new OriginalWebSocket(url, protocols);
-                                                } else {
-                                                     ws = new OriginalWebSocket(url);
-                                                }
-                                                
+                                                let ws = protocols ? new OriginalWebSocket(url, protocols) : new OriginalWebSocket(url);
                                                 ws.addEventListener('message', function(event) {
                                                     if (window.AndroidBot) {
                                                         window.AndroidBot.onWebSocketMessage(event.data ? event.data.toString() : "");
                                                     }
+                                                    try {
+                                                        let msg = event.data.toString();
+                                                        let match = msg.match(/\[\s*([\d.]+)\s*,\s*[\d.]+\s*\]/);
+                                                        if (match && match[1]) {
+                                                            let p = parseFloat(match[1]);
+                                                            if(!isNaN(p) && p > 0) {
+                                                                if(window.priceHistory.length === 0 || window.priceHistory[window.priceHistory.length - 1] !== p) {
+                                                                    window.priceHistory.push(p);
+                                                                    if(window.priceHistory.length > 60) window.priceHistory.shift();
+                                                                }
+                                                            }
+                                                        }
+                                                    } catch(err) {}
                                                 });
-                                                
                                                 return ws;
                                             };
                                             window.WebSocket.prototype = OriginalWebSocket.prototype;
-                                            window.WebSocket.CONNECTING = OriginalWebSocket.CONNECTING;
-                                            window.WebSocket.OPEN = OriginalWebSocket.OPEN;
-                                            window.WebSocket.CLOSING = OriginalWebSocket.CLOSING;
-                                            window.WebSocket.CLOSED = OriginalWebSocket.CLOSED;
-                                            console.log('Pocket Bot JS Injected');
+                                            Object.assign(window.WebSocket, OriginalWebSocket);
+                                            console.log('Pocket Bot Real Analysis Injected');
                                         })();
                                     """.trimIndent()
                                     view?.evaluateJavascript(jsInject, null)
@@ -753,7 +814,7 @@ fun DashboardScreen() {
                                     val safeAmount = entryAmount.toDoubleOrNull() ?: 1.0
                                     val safeMartingale = if (useMartingale) martingaleSteps.toIntOrNull() ?: 3 else 0
                                     webViewRef?.evaluateJavascript(
-                                        "if(window.startTrading) window.startTrading($safeAmount, '$selectedDuration', $safeMartingale);", 
+                                        "if(window.startTrading) window.startTrading($safeAmount, '$selectedDuration', $safeMartingale, '$strategiesMerged');", 
                                         null
                                     )
                                     snackbarHostState.showSnackbar(
