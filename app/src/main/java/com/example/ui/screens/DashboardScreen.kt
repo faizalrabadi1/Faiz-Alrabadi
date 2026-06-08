@@ -237,12 +237,15 @@ fun DashboardScreen() {
                                                 if(balanceEl) {
                                                     let currentBalance = parseFloat((balanceEl.innerText || balanceEl.textContent).replace(/[^0-9.-]/g, ''));
                                                     if (!isNaN(currentBalance)) {
-                                                        if(window.pocketBotState.lastBalance !== null) {
+                                                        if(window.pocketBotState.lastBalance !== null && window.botInTrade) {
                                                             if(currentBalance > window.pocketBotState.lastBalance) {
                                                                 losses = 0; // Won!
+                                                                window.pocketBotState.lastResult = 'win';
                                                             } else if (currentBalance < window.pocketBotState.lastBalance) {
                                                                 losses += 1; // Lost!
+                                                                window.pocketBotState.lastResult = 'loss';
                                                             }
+                                                            window.botInTrade = false;
                                                         }
                                                         window.pocketBotState.lastBalance = currentBalance;
                                                     }
@@ -270,41 +273,124 @@ fun DashboardScreen() {
                                                 let strats = window.pocketBotState.strategies.toLowerCase();
                                                 let prices = window.priceHistory;
                                                 
-                                                // REAL TECHNICAL ANALYSIS
-                                                if (prices.length > 5) {
+                                                // REAL TECHNICAL ANALYSIS & ADVANCED ALGORITHMS
+                                                if (prices.length > 20) {
+                                                    if (!window.botWeights) window.botWeights = { rsi: 1.0, macd: 1.0, bb: 1.0, fib: 1.0, sma: 1.0, vip: 1.0 };
+                                                    
+                                                    // Q-Learning Weight Update (Reinforcement)
+                                                    if (window.pocketBotState.lastResult === 'loss') {
+                                                        ['rsi','macd','bb','fib','sma','vip'].forEach(s => window.botWeights[s] *= 0.95);
+                                                    } else if (window.pocketBotState.lastResult === 'win') {
+                                                        ['rsi','macd','bb','fib','sma','vip'].forEach(s => window.botWeights[s] = Math.min(1.5, window.botWeights[s] * 1.02));
+                                                    }
+                                                    window.pocketBotState.lastResult = null; // Reset for next reading
+                                                    
                                                     let current = prices[prices.length - 1];
                                                     let sma5 = prices.slice(-5).reduce((a,b)=>a+b,0)/5;
-                                                    let sma14 = prices.slice(-Math.min(14,prices.length)).reduce((a,b)=>a+b,0)/Math.min(14,prices.length);
+                                                    let sma14 = prices.slice(-14).reduce((a,b)=>a+b,0)/14;
+                                                    let sma20 = prices.slice(-20).reduce((a,b)=>a+b,0)/20;
                                                     
-                                                    let isCall = false;
-                                                    let isPut = false;
+                                                    let callScore = 0;
+                                                    let putScore = 0;
                                                     
-                                                    if (strats.includes('rsi')) {
+                                                    // 1. RSI
+                                                    if (strats.includes('rsi') || strats.includes('stochastic')) {
                                                         let u=0, d=0;
-                                                        for(let i=1; i<Math.min(14,prices.length); i++){
+                                                        for(let i=1; i<14; i++){
                                                             let dif = prices[prices.length-i] - prices[prices.length-i-1];
                                                             if(dif>0) u+=dif; else d-=dif;
                                                         }
                                                         let rs = u/(d===0?0.001:d);
                                                         let rsi = 100 - (100/(1+rs));
-                                                        if (rsi < 30) { isCall = true; } // Oversold
-                                                        if (rsi > 70) { isPut = true; }  // Overbought
-                                                    }
-                                                    if (strats.includes('sma') || strats.includes('moving') || strats.includes('تقاطع')) {
-                                                        if (sma5 > sma14) isCall = true;
-                                                        if (sma5 < sma14) isPut = true;
-                                                    }
-                                                    if (strats.includes('قناص') || strats.includes('vip')) {
-                                                        let momentum = current - prices[prices.length - 5];
-                                                        if (momentum > 0) { isCall = true; }
-                                                        else { isPut = true; }
+                                                        if (rsi < 30) callScore += window.botWeights.rsi;
+                                                        if (rsi > 70) putScore += window.botWeights.rsi;
                                                     }
                                                     
-                                                    if (!isCall && !isPut) {
-                                                        targetBtn = (Math.random() > 0.5) ? btnCall : btnPut;
+                                                    // 2. MACD Approximation (using moving averages diff)
+                                                    if (strats.includes('macd')) {
+                                                        let ema12 = prices.slice(-12).reduce((a,b)=>a+b,0)/12; 
+                                                        let ema26 = prices.slice(-26 > -prices.length ? -26 : -prices.length).reduce((a,b)=>a+b,0)/26;
+                                                        let macd = ema12 - ema26;
+                                                        // Signal line approximation
+                                                        if (macd > 0 && current > sma5) callScore += window.botWeights.macd;
+                                                        if (macd < 0 && current < sma5) putScore += window.botWeights.macd;
+                                                    }
+                                                    
+                                                    // 3. Bollinger Bands Approximation
+                                                    if (strats.includes('bollinger') || strats.includes('ارتداد')) {
+                                                        let variances = prices.slice(-20).map(p => Math.pow(p - sma20, 2));
+                                                        let stdDev = Math.sqrt(variances.reduce((a,b)=>a+b,0)/20);
+                                                        let upperBand = sma20 + (stdDev * 2);
+                                                        let lowerBand = sma20 - (stdDev * 2);
+                                                        if (current <= lowerBand) callScore += window.botWeights.bb;
+                                                        if (current >= upperBand) putScore += window.botWeights.bb;
+                                                    }
+                                                    
+                                                    // 4. Advanced Fibonacci Suite (Retracement, Fan, Time Zones)
+                                                    if (strats.includes('فيبوناتشي') || strats.includes('fibonacci') || strats.includes('fib')) {
+                                                        let pList = prices.slice(-34); // Use 34 (Fib number) periods
+                                                        let maxP = Math.max(...pList);
+                                                        let minP = Math.min(...pList);
+                                                        let maxIdx = pList.indexOf(maxP);
+                                                        let minIdx = pList.indexOf(minP);
+                                                        let diff = maxP - minP;
+                                                        
+                                                        if (diff > 0 && maxIdx !== minIdx) {
+                                                            // A. Fibonacci Retracement
+                                                            let fib618 = maxP - (diff * 0.618);
+                                                            let fib500 = maxP - (diff * 0.500);
+                                                            let fib382 = maxP - (diff * 0.382);
+                                                            
+                                                            let margin = diff * 0.05;
+                                                            if (Math.abs(current - fib618) < margin) callScore += window.botWeights.fib;
+                                                            if (Math.abs(current - fib382) < margin) putScore += window.botWeights.fib;
+
+                                                            // B. Fibonacci Fan (Trend Support/Resistance)
+                                                            let dx = maxIdx - minIdx;
+                                                            let slope = diff / dx;
+                                                            let currentDx = (pList.length - 1) - minIdx;
+                                                            
+                                                            let fan618 = minP + (slope * 0.618 * currentDx);
+                                                            let fan500 = minP + (slope * 0.500 * currentDx);
+                                                            let fan382 = minP + (slope * 0.382 * currentDx);
+                                                            
+                                                            if (Math.abs(current - fan618) < margin) callScore += window.botWeights.fib * 0.5;
+                                                            if (Math.abs(current - fan382) < margin) putScore += window.botWeights.fib * 0.5;
+
+                                                            // C. Fibonacci Time Zones
+                                                            let fibTimes = [5, 8, 13, 21, 34];
+                                                            let timeSinceLow = (pList.length - 1) - minIdx;
+                                                            let timeSinceHigh = (pList.length - 1) - maxIdx;
+                                                            
+                                                            if (fibTimes.includes(timeSinceLow)) {
+                                                                // Expected reversal from low trend
+                                                                if (current < sma5) callScore += window.botWeights.fib * 1.5; 
+                                                            }
+                                                            if (fibTimes.includes(timeSinceHigh)) {
+                                                                // Expected reversal from high trend
+                                                                if (current > sma5) putScore += window.botWeights.fib * 1.5;
+                                                            }
+                                                        }
+                                                    }
+
+                                                    // 5. SMAs Cross
+                                                    if (strats.includes('sma') || strats.includes('moving') || strats.includes('تقاطع')) {
+                                                        if (sma5 > sma14) callScore += window.botWeights.sma;
+                                                        if (sma5 < sma14) putScore += window.botWeights.sma;
+                                                    }
+                                                    
+                                                    // 6. VIP / Momentum
+                                                    if (strats.includes('قناص') || strats.includes('vip')) {
+                                                        let momentum = current - prices[prices.length - 5];
+                                                        if (momentum > 0) callScore += window.botWeights.vip * 1.5;
+                                                        if (momentum < 0) putScore += window.botWeights.vip * 1.5;
+                                                    }
+                                                    
+                                                    if (callScore === 0 && putScore === 0) {
+                                                        targetBtn = (Math.random() > 0.5) ? btnCall : btnPut; // Fallback to avoid dead loop
                                                     } else {
-                                                        if (isCall && !isPut) targetBtn = btnCall;
-                                                        else if (isPut && !isCall) targetBtn = btnPut;
+                                                        if (callScore > putScore) targetBtn = btnCall;
+                                                        else if (putScore > callScore) targetBtn = btnPut;
                                                         else targetBtn = (Math.random() > 0.5) ? btnCall : btnPut;
                                                     }
                                                 } else {
@@ -313,6 +399,7 @@ fun DashboardScreen() {
                                                 
                                                 if (targetBtn) {
                                                     targetBtn.click();
+                                                    window.botInTrade = true;
                                                 }
                                             };
 
