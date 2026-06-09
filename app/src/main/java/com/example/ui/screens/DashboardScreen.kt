@@ -60,7 +60,7 @@ fun DashboardScreen() {
     val coroutineScope = rememberCoroutineScope()
     
     val strategies = listOf("RSI", "MACD", "Moving Average", "Bollinger", "Stochastic", "CCI")
-    val fayezStrategies = listOf("استراتيجية القناص (فايز الخاص)", "استراتيجية الشموع (فايز)", "استراتيجية VIP", "الاستراتيجية الثانية (تقاطع SMA)")
+    val fayezStrategies = listOf("استراتيجية القناص (فايز الخاص)", "استراتيجية الشموع (فايز)", "استراتيجية VIP", "الاستراتيجية الثانية (تقاطع SMA)", "التحليل الفني بعلم الرمل")
     val statsStrategies = listOf("الانحدار الخطي (Linear Regression)", "الارتداد المعياري (Z-Score)", "سلاسل ماركوف (Markov Chains)", "الاحتمالية البايزية (Bayesian Probability)", "توزيع جاوس (Gaussian Distribution)")
     var entryAmount by remember { mutableStateOf("1") }
     var riskPercentage by remember { mutableStateOf("2") }
@@ -410,6 +410,51 @@ fun DashboardScreen() {
                                                         let momentum = current - prices[prices.length - 5];
                                                         if (momentum > 0) callScore += window.botWeights.vip * 1.5;
                                                         if (momentum < 0) putScore += window.botWeights.vip * 1.5;
+                                                    }
+                                                    
+                                                    // 7. Geomancy Technical Analysis (علم الرمل - فايز الربادي)
+                                                    if (strats.includes('الرمل') || strats.includes('raml')) {
+                                                        let candles = [];
+                                                        let period = 10;
+                                                        for (let i = 0; i < prices.length; i += period) {
+                                                            let chunk = prices.slice(i, i + period);
+                                                            if (chunk.length > 0) {
+                                                                candles.push({
+                                                                    open: chunk[0],
+                                                                    high: Math.max(...chunk),
+                                                                    low: Math.min(...chunk),
+                                                                    close: chunk[chunk.length - 1]
+                                                                });
+                                                            }
+                                                        }
+                                                        
+                                                        if (candles.length >= 2) {
+                                                            let lastC = candles[candles.length - 1];
+                                                            let prevC = candles[candles.length - 2];
+                                                            
+                                                            let body = Math.abs(lastC.close - lastC.open);
+                                                            let range = lastC.high - lastC.low;
+                                                            let isBull = lastC.close > lastC.open;
+                                                            let isBear = lastC.open > lastC.close;
+                                                            
+                                                            let upperShadow = lastC.high - Math.max(lastC.open, lastC.close);
+                                                            let lowerShadow = Math.min(lastC.open, lastC.close) - lastC.low;
+                                                            
+                                                            if (range > 0) {
+                                                                // طريق صاعد (Bullish Marubozu)
+                                                                if (isBull && body/range > 0.8) callScore += window.botWeights.vip * 2.0;
+                                                                // طريق هابط (Bearish Marubozu)
+                                                                if (isBear && body/range > 0.8) putScore += window.botWeights.vip * 2.0;
+                                                                // نصرة داخلة صاعدة (Hammer)
+                                                                if (lowerShadow > body * 1.5 && upperShadow < body * 0.5) callScore += window.botWeights.vip * 1.5;
+                                                                // نصرة خارجة / شهاب (Shooting Star)
+                                                                if (upperShadow > body * 1.5 && lowerShadow < body * 0.5) putScore += window.botWeights.vip * 1.5;
+                                                                // فرح (Bullish Engulfing)
+                                                                if (prevC.open > prevC.close && isBull && lastC.close > prevC.open && lastC.open < prevC.close) callScore += window.botWeights.vip * 2.5; 
+                                                                // حزن (Bearish Engulfing)
+                                                                if (prevC.close > prevC.open && isBear && lastC.close < prevC.open && lastC.open > prevC.close) putScore += window.botWeights.vip * 2.5;
+                                                            }
+                                                        }
                                                     }
                                                     
                                                     if (callScore === 0 && putScore === 0) {
