@@ -36,7 +36,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Color
 
-class BotJavascriptInterface(private val onPriceUpdated: (String) -> Unit) {
+data class TradeRecord(
+    val time: String,
+    val amount: String,
+    val result: String // "win" or "loss"
+)
+
+class BotJavascriptInterface(
+    private val onPriceUpdated: (String) -> Unit,
+    private val onTradeResult: (String, String, String) -> Unit
+) {
     @JavascriptInterface
     fun onWebSocketMessage(message: String) {
         // Debounce or filter on the Kotlin side if needed,
@@ -44,6 +53,11 @@ class BotJavascriptInterface(private val onPriceUpdated: (String) -> Unit) {
         if (message.contains("price", ignoreCase = true)) {
             // we don't update UI on every message to avoid ANR
         }
+    }
+
+    @JavascriptInterface
+    fun reportTradeResult(time: String, amount: String, result: String) {
+        onTradeResult(time, amount, result)
     }
 }
 
@@ -58,6 +72,7 @@ fun DashboardScreen() {
     var latestPrice by remember { mutableStateOf("جاري جلب السعر...") }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val tradeHistory = remember { mutableStateListOf<TradeRecord>() }
     
     val strategies = listOf("RSI", "MACD", "Moving Average", "Bollinger", "Stochastic", "CCI")
     val fayezStrategies = listOf("استراتيجية القناص (فايز الخاص)", "استراتيجية الشموع (فايز)", "استراتيجية VIP", "الاستراتيجية الثانية (تقاطع SMA)", "التحليل الفني بعلم الرمل")
@@ -160,9 +175,19 @@ fun DashboardScreen() {
                             settings.setSupportZoom(true)
                             settings.cacheMode = WebSettings.LOAD_DEFAULT
                             
-                            addJavascriptInterface(BotJavascriptInterface { price ->
-                                // Optional UI update debounce
-                            }, "AndroidBot")
+                            addJavascriptInterface(BotJavascriptInterface(
+                                onPriceUpdated = { price -> 
+                                    // Optional UI update debounce
+                                },
+                                onTradeResult = { time, amount, result ->
+                                    coroutineScope.launch {
+                                        tradeHistory.add(0, TradeRecord(time, amount, result))
+                                        if (tradeHistory.size > 20) {
+                                            tradeHistory.removeLast()
+                                        }
+                                    }
+                                }
+                            ), "AndroidBot")
                             
                             webViewClient = object : WebViewClient() {
                                 override fun onPageFinished(view: WebView?, url: String?) {
@@ -244,9 +269,11 @@ fun DashboardScreen() {
                                                             if(currentBalance > window.pocketBotState.lastBalance) {
                                                                 losses = 0; // Won!
                                                                 if (window.pocketBotState.lastResult === null) window.pocketBotState.lastResult = 'win';
+                                                                if (window.AndroidBot) window.AndroidBot.reportTradeResult(new Date().toLocaleTimeString(), (window.pocketBotState.currentAmount || window.pocketBotState.baseAmount).toString(), 'win');
                                                             } else if (currentBalance < window.pocketBotState.lastBalance) {
                                                                 losses += 1; // Lost!
                                                                 if (window.pocketBotState.lastResult === null) window.pocketBotState.lastResult = 'loss';
+                                                                if (window.AndroidBot) window.AndroidBot.reportTradeResult(new Date().toLocaleTimeString(), (window.pocketBotState.currentAmount || window.pocketBotState.baseAmount).toString(), 'loss');
                                                             }
                                                             window.botInTrade = false;
                                                         }
@@ -265,6 +292,7 @@ fun DashboardScreen() {
                                                         window.pocketBotState.consecutiveLosses = 0;
                                                     }
                                                 }
+                                                window.pocketBotState.currentAmount = amt;
                                                 
                                                 window.setInputValue('.amount-input input, input.amount, input[name="amount"], .block-control__input input', amt);
                                                 
@@ -948,6 +976,42 @@ fun DashboardScreen() {
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
+                    
+                    if (tradeHistory.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "سجل الصفقات الأخيرة",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.padding(8.dp)) {
+                                items(tradeHistory.size) { index ->
+                                    val record = tradeHistory[index]
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(text = record.time, style = MaterialTheme.typography.bodySmall)
+                                        Text(text = "${record.amount}$", style = MaterialTheme.typography.bodySmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                        Text(
+                                            text = if (record.result == "win") "ربح" else "خسارة", 
+                                            color = if (record.result == "win") MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                        )
+                                    }
+                                    androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                                }
+                            }
+                        }
+                    }
+                    
                         }
                     }
                     } // Ends internal column for isBottomPanelExpanded
