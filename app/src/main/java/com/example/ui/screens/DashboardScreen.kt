@@ -529,6 +529,33 @@ fun DashboardScreen() {
                         .fillMaxWidth()
                         .padding(16.dp)
                 ) {
+                    // أزرار النتائج اليدوية
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                webViewRef?.evaluateJavascript("if(window.registerManualResult) window.registerManualResult('win');", null)
+                                coroutineScope.launch { snackbarHostState.showSnackbar("تم تسجيل: صفقة رابحة") }
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+                        ) {
+                            Text("صفقة رابحة")
+                        }
+                        Button(
+                            onClick = {
+                                webViewRef?.evaluateJavascript("if(window.registerManualResult) window.registerManualResult('loss');", null)
+                                coroutineScope.launch { snackbarHostState.showSnackbar("تم تسجيل: صفقة خاسرة") }
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("صفقة خاسرة")
+                        }
+                    }
+
                     // Header for collapsing
                     Box(
                         modifier = Modifier
@@ -563,33 +590,6 @@ fun DashboardScreen() {
 
                     AnimatedVisibility(visible = isBottomPanelExpanded) {
                         Column(modifier = Modifier.fillMaxWidth()) {
-                            // أزرار النتائج اليدوية
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Button(
-                                    onClick = {
-                                        webViewRef?.evaluateJavascript("if(window.registerManualResult) window.registerManualResult('win');", null)
-                                        coroutineScope.launch { snackbarHostState.showSnackbar("تم تسجيل: صفقة رابحة") }
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
-                                ) {
-                                    Text("صفقة رابحة")
-                                }
-                                Button(
-                                    onClick = {
-                                        webViewRef?.evaluateJavascript("if(window.registerManualResult) window.registerManualResult('loss');", null)
-                                        coroutineScope.launch { snackbarHostState.showSnackbar("تم تسجيل: صفقة خاسرة") }
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                                ) {
-                                    Text("صفقة خاسرة")
-                                }
-                            }
-                            
                             // ميزة 1: رادار الذكاء الاصطناعي للمتداول اليمني
                             Column(
                                 modifier = Modifier
