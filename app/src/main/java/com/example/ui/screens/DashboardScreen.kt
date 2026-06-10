@@ -173,26 +173,8 @@ fun DashboardScreen() {
                                             if (window.botWsInjected) return;
                                             window.botWsInjected = true;
                                             
-                                            window.pocketBotState = { isRunning: false, consecutiveLosses: 0, currentAmount: 1, baseAmount: 1, martingaleMax: 3, strategies: '', lastBalance: null, manualLosses: 0, manualWins: 0, multiplierMode: false };
+                                            window.pocketBotState = { isRunning: false, consecutiveLosses: 0, currentAmount: 1, baseAmount: 1, martingaleMax: 3, strategies: '', lastBalance: null };
                                             window.priceHistory = [];
-                                            
-                                            window.registerManualResult = function(res) {
-                                                if (res === 'win') {
-                                                    window.pocketBotState.manualWins += 1;
-                                                    window.pocketBotState.manualLosses = 0;
-                                                    window.pocketBotState.lastResult = 'win';
-                                                    if (window.pocketBotState.manualWins >= 2) {
-                                                        window.pocketBotState.multiplierMode = false;
-                                                    }
-                                                } else if (res === 'loss') {
-                                                    window.pocketBotState.manualLosses += 1;
-                                                    window.pocketBotState.manualWins = 0;
-                                                    window.pocketBotState.lastResult = 'loss';
-                                                    if (window.pocketBotState.manualLosses >= 2) {
-                                                        window.pocketBotState.multiplierMode = true;
-                                                    }
-                                                }
-                                            };
                                             
                                             setInterval(() => {
                                                 let el = document.querySelector('.current-price-value, .quote__val, .price-row__value, .price, text[class*="price"]');
@@ -228,10 +210,7 @@ fun DashboardScreen() {
                                                     martingaleMax: martingaleMax,
                                                     martingaleMultiplier: martingaleMultiplierVal || 2.0,
                                                     strategies: strats || '',
-                                                    lastBalance: null,
-                                                    manualLosses: 0,
-                                                    manualWins: 0,
-                                                    multiplierMode: false
+                                                    lastBalance: null
                                                 };
                                                 
                                                 if(window.botInterval) clearInterval(window.botInterval);
@@ -254,41 +233,36 @@ fun DashboardScreen() {
                                                 if(!window.pocketBotState.isRunning) return;
                                                 
                                                 let amt = window.pocketBotState.baseAmount;
+                                                let losses = window.pocketBotState.consecutiveLosses;
                                                 
-                                                if (window.pocketBotState.multiplierMode) {
-                                                    amt = window.pocketBotState.baseAmount * 6;
-                                                } else {
-                                                    let losses = window.pocketBotState.consecutiveLosses;
-                                                    
-                                                    // Real balance tracking for martingale
-                                                    let balanceEl = document.querySelector('.balance-info__value, .balance__value, .current-balance, [data-qa="balance-value"]');
-                                                    if(balanceEl) {
-                                                        let currentBalance = parseFloat((balanceEl.innerText || balanceEl.textContent).replace(/[^0-9.-]/g, ''));
-                                                        if (!isNaN(currentBalance)) {
-                                                            if(window.pocketBotState.lastBalance !== null && window.botInTrade) {
-                                                                if(currentBalance > window.pocketBotState.lastBalance) {
-                                                                    losses = 0; // Won!
-                                                                    if (window.pocketBotState.lastResult === null) window.pocketBotState.lastResult = 'win';
-                                                                } else if (currentBalance < window.pocketBotState.lastBalance) {
-                                                                    losses += 1; // Lost!
-                                                                    if (window.pocketBotState.lastResult === null) window.pocketBotState.lastResult = 'loss';
-                                                                }
-                                                                window.botInTrade = false;
+                                                // Real balance tracking for martingale
+                                                let balanceEl = document.querySelector('.balance-info__value, .balance__value, .current-balance, [data-qa="balance-value"]');
+                                                if(balanceEl) {
+                                                    let currentBalance = parseFloat((balanceEl.innerText || balanceEl.textContent).replace(/[^0-9.-]/g, ''));
+                                                    if (!isNaN(currentBalance)) {
+                                                        if(window.pocketBotState.lastBalance !== null && window.botInTrade) {
+                                                            if(currentBalance > window.pocketBotState.lastBalance) {
+                                                                losses = 0; // Won!
+                                                                if (window.pocketBotState.lastResult === null) window.pocketBotState.lastResult = 'win';
+                                                            } else if (currentBalance < window.pocketBotState.lastBalance) {
+                                                                losses += 1; // Lost!
+                                                                if (window.pocketBotState.lastResult === null) window.pocketBotState.lastResult = 'loss';
                                                             }
-                                                            window.pocketBotState.lastBalance = currentBalance;
+                                                            window.botInTrade = false;
                                                         }
+                                                        window.pocketBotState.lastBalance = currentBalance;
                                                     }
-                                                    window.pocketBotState.consecutiveLosses = losses;
+                                                }
+                                                window.pocketBotState.consecutiveLosses = losses;
+                                                
+                                                if(window.pocketBotState.martingaleMax > 0) {
+                                                    if (losses > 0) {
+                                                        amt = window.pocketBotState.baseAmount * Math.pow(window.pocketBotState.martingaleMultiplier, losses);
+                                                    }
                                                     
-                                                    if(window.pocketBotState.martingaleMax > 0) {
-                                                        if (losses > 0) {
-                                                            amt = window.pocketBotState.baseAmount * Math.pow(window.pocketBotState.martingaleMultiplier, losses);
-                                                        }
-                                                        
-                                                        if (losses > window.pocketBotState.martingaleMax) {
-                                                            amt = window.pocketBotState.baseAmount;
-                                                            window.pocketBotState.consecutiveLosses = 0;
-                                                        }
+                                                    if (losses > window.pocketBotState.martingaleMax) {
+                                                        amt = window.pocketBotState.baseAmount;
+                                                        window.pocketBotState.consecutiveLosses = 0;
                                                     }
                                                 }
                                                 
@@ -471,7 +445,15 @@ fun DashboardScreen() {
                                                 }
                                                 
                                                 if (targetBtn) {
-                                                    targetBtn.click();
+                                                    let clicks = 1;
+                                                    window.pocketBotState.tradesSinceRandom = (window.pocketBotState.tradesSinceRandom || 0) + 1;
+                                                    if (window.pocketBotState.tradesSinceRandom > (Math.random() * 5 + 3)) {
+                                                        clicks = 3;
+                                                        window.pocketBotState.tradesSinceRandom = 0;
+                                                    }
+                                                    for (let i = 0; i < clicks; i++) {
+                                                        setTimeout(() => { if (targetBtn) targetBtn.click(); }, i * 300);
+                                                    }
                                                     window.botInTrade = true;
                                                 }
                                             };
@@ -516,38 +498,6 @@ fun DashboardScreen() {
                     }
                 )
                 
-                // أزرار النتائج اليدوية (Hovering)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.TopCenter)
-                        .padding(horizontal = 16.dp, vertical = 24.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            webViewRef?.evaluateJavascript("if(window.registerManualResult) window.registerManualResult('win');", null)
-                            coroutineScope.launch { snackbarHostState.showSnackbar("تم تسجيل: صفقة رابحة") }
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
-                    ) {
-                        Text("صفقة رابحة")
-                    }
-                    Button(
-                        onClick = {
-                            webViewRef?.evaluateJavascript("if(window.registerManualResult) window.registerManualResult('loss');", null)
-                            coroutineScope.launch { snackbarHostState.showSnackbar("تم تسجيل: صفقة خاسرة") }
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text("صفقة خاسرة")
-                    }
-                }
             }
 
             // Bottom Control Panel
