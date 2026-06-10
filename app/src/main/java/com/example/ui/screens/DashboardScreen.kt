@@ -70,6 +70,7 @@ fun DashboardScreen() {
 
     var useMartingale by remember { mutableStateOf(false) }
     var martingaleSteps by remember { mutableStateOf("3") }
+    var martingaleMultiplier by remember { mutableStateOf("2.0") }
     var takeProfit by remember { mutableStateOf("") }
     var stopLoss by remember { mutableStateOf("") }
     var isSettingsExpanded by remember { mutableStateOf(false) }
@@ -142,6 +143,7 @@ fun DashboardScreen() {
                     .fillMaxWidth()
             ) {
                 AndroidView(
+                    modifier = Modifier.fillMaxSize(),
                     factory = { ctx ->
                         WebView(ctx).apply {
                             layoutParams = android.view.ViewGroup.LayoutParams(
@@ -217,13 +219,14 @@ fun DashboardScreen() {
                                                 });
                                             };
 
-                                            window.startTrading = function(amount, duration, martingaleMax, strats) {
+                                            window.startTrading = function(amount, duration, martingaleMax, strats, martingaleMultiplierVal) {
                                                 window.pocketBotState = {
                                                     isRunning: true,
                                                     consecutiveLosses: 0,
                                                     baseAmount: amount,
                                                     currentAmount: amount,
                                                     martingaleMax: martingaleMax,
+                                                    martingaleMultiplier: martingaleMultiplierVal || 2.0,
                                                     strategies: strats || '',
                                                     lastBalance: null,
                                                     manualLosses: 0,
@@ -278,10 +281,9 @@ fun DashboardScreen() {
                                                     window.pocketBotState.consecutiveLosses = losses;
                                                     
                                                     if(window.pocketBotState.martingaleMax > 0) {
-                                                        if (losses === 1) amt = window.pocketBotState.baseAmount * 2;
-                                                        else if (losses === 2) amt = window.pocketBotState.baseAmount * 5;
-                                                        else if (losses === 3) amt = window.pocketBotState.baseAmount * 11;
-                                                        else if (losses >= 4) amt = window.pocketBotState.baseAmount * 25;
+                                                        if (losses > 0) {
+                                                            amt = window.pocketBotState.baseAmount * Math.pow(window.pocketBotState.martingaleMultiplier, losses);
+                                                        }
                                                         
                                                         if (losses > window.pocketBotState.martingaleMax) {
                                                             amt = window.pocketBotState.baseAmount;
@@ -511,9 +513,41 @@ fun DashboardScreen() {
                     },
                     update = { view ->
                         webViewRef = view
-                    },
-                    modifier = Modifier.fillMaxSize()
+                    }
                 )
+                
+                // أزرار النتائج اليدوية (Hovering)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter)
+                        .padding(horizontal = 16.dp, vertical = 24.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            webViewRef?.evaluateJavascript("if(window.registerManualResult) window.registerManualResult('win');", null)
+                            coroutineScope.launch { snackbarHostState.showSnackbar("تم تسجيل: صفقة رابحة") }
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+                    ) {
+                        Text("صفقة رابحة")
+                    }
+                    Button(
+                        onClick = {
+                            webViewRef?.evaluateJavascript("if(window.registerManualResult) window.registerManualResult('loss');", null)
+                            coroutineScope.launch { snackbarHostState.showSnackbar("تم تسجيل: صفقة خاسرة") }
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("صفقة خاسرة")
+                    }
+                }
             }
 
             // Bottom Control Panel
@@ -529,33 +563,6 @@ fun DashboardScreen() {
                         .fillMaxWidth()
                         .padding(16.dp)
                 ) {
-                    // أزرار النتائج اليدوية
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                webViewRef?.evaluateJavascript("if(window.registerManualResult) window.registerManualResult('win');", null)
-                                coroutineScope.launch { snackbarHostState.showSnackbar("تم تسجيل: صفقة رابحة") }
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
-                        ) {
-                            Text("صفقة رابحة")
-                        }
-                        Button(
-                            onClick = {
-                                webViewRef?.evaluateJavascript("if(window.registerManualResult) window.registerManualResult('loss');", null)
-                                coroutineScope.launch { snackbarHostState.showSnackbar("تم تسجيل: صفقة خاسرة") }
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Text("صفقة خاسرة")
-                        }
-                    }
-
                     // Header for collapsing
                     Box(
                         modifier = Modifier
@@ -911,6 +918,15 @@ fun DashboardScreen() {
                                     singleLine = true,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                                 )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = martingaleMultiplier,
+                                    onValueChange = { martingaleMultiplier = it },
+                                    label = { Text("عامل المضاعفة (مثال: 1.9, 2.0, 2.5)") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                                )
                             }
                         }
                     }
@@ -998,8 +1014,9 @@ fun DashboardScreen() {
                                     val durationStr = durationLabels[selectedDuration] ?: selectedDuration
                                     val safeAmount = entryAmount.toDoubleOrNull() ?: 1.0
                                     val safeMartingale = if (useMartingale) martingaleSteps.toIntOrNull() ?: 3 else 0
+                                    val safeMultiplier = martingaleMultiplier.toDoubleOrNull() ?: 2.0
                                     webViewRef?.evaluateJavascript(
-                                        "if(window.startTrading) window.startTrading($safeAmount, '$selectedDuration', $safeMartingale, '$strategiesMerged');", 
+                                        "if(window.startTrading) window.startTrading($safeAmount, '$selectedDuration', $safeMartingale, '$strategiesMerged', $safeMultiplier);", 
                                         null
                                     )
                                     snackbarHostState.showSnackbar(
