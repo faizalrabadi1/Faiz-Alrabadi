@@ -36,28 +36,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = "auth") {
-        composable("auth") {
-            AuthScreen(
-                onNavigateToDashboard = {
-                    navController.navigate("dashboard") {
-                        popUpTo("auth") { inclusive = true }
-                    }
-                },
-                onNavigateToAdmin = {
-                    navController.navigate("admin")
-                }
-            )
-        }
+    NavHost(navController = navController, startDestination = "dashboard") {
         composable("dashboard") {
             DashboardScreen()
-        }
-        composable("admin") {
-            com.example.ui.screens.AdminScreen(
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
-            )
         }
     }
 }
