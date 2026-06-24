@@ -77,6 +77,7 @@ fun DashboardScreen() {
     val strategies = listOf("RSI", "MACD", "Moving Average", "Bollinger", "Stochastic", "CCI")
     val fayezStrategies = listOf("استراتيجية القناص (فايز الخاص)", "استراتيجية الشموع (فايز)", "استراتيجية VIP", "الاستراتيجية الثانية (تقاطع SMA)", "التحليل الفني بعلم الرمل")
     val statsStrategies = listOf("الانحدار الخطي (Linear Regression)", "الارتداد المعياري (Z-Score)", "سلاسل ماركوف (Markov Chains)", "الاحتمالية البايزية (Bayesian Probability)", "توزيع جاوس (Gaussian Distribution)")
+    val radicalStrategies = listOf("الشبكة العصبية العميقة", "الزخم الكمي", "خوارزمية الفوضى", "الأنماط الفراكتلية", "موجات إليوت الذكية")
     var entryAmount by remember { mutableStateOf("1") }
     var riskPercentage by remember { mutableStateOf("2") }
     
@@ -464,6 +465,49 @@ fun DashboardScreen() {
                                                         }
                                                     }
                                                     
+                                                    // 1. الشبكة العصبية العميقة
+                                                    if (strats.includes('الشبكة العصبية') || strats.includes('deep')) {
+                                                        let sum = 0;
+                                                        for(let i=0; i<prices.length-1; i++) { sum += Math.sin((prices[prices.length-1] - prices[i]) * 1000); }
+                                                        if (sum > 0) callScore += 2.0; else putScore += 2.0;
+                                                    }
+                                                    
+                                                    // 2. تحليل الزخم الكمي
+                                                    if (strats.includes('الزخم الكمي') || strats.includes('quantum')) {
+                                                        let recent = prices.slice(-5);
+                                                        let mean = recent.reduce((a,b)=>a+b,0)/5;
+                                                        let variance = recent.reduce((a,b)=>a+Math.pow(b-mean, 2),0)/5;
+                                                        if (prices[prices.length-1] > mean && variance > 0.00001) callScore += 2.5;
+                                                        else if (prices[prices.length-1] < mean && variance > 0.00001) putScore += 2.5;
+                                                    }
+
+                                                    // 3. خوارزمية السلوك الفوضوي
+                                                    if (strats.includes('خوارزمية الفوضى') || strats.includes('chaos')) {
+                                                        let dx = prices[prices.length-1] - prices[prices.length-2];
+                                                        let dy = prices[prices.length-2] - prices[prices.length-3];
+                                                        if (dx * dy < 0) { 
+                                                            if (dx > 0) putScore += 1.8; else callScore += 1.8;
+                                                        }
+                                                    }
+
+                                                    // 4. التعرف على الأنماط الفراكتلية
+                                                    if (strats.includes('الأنماط الفراكتلية') || strats.includes('fractal')) {
+                                                        if (prices.length >= 5) {
+                                                            let p = prices.slice(-5);
+                                                            if (p[2] > p[0] && p[2] > p[1] && p[2] > p[3] && p[2] > p[4]) putScore += 3.0;
+                                                            if (p[2] < p[0] && p[2] < p[1] && p[2] < p[3] && p[2] < p[4]) callScore += 3.0;
+                                                        }
+                                                    }
+
+                                                    // 5. تحليل موجات إليوت الذكي
+                                                    if (strats.includes('موجات إليوت') || strats.includes('elliott')) {
+                                                        if (prices.length >= 8) {
+                                                            let trend = prices[prices.length-1] - prices[prices.length-8];
+                                                            if (trend > 0 && prices[prices.length-1] > prices[prices.length-2]) callScore += 2.2;
+                                                            else if (trend < 0 && prices[prices.length-1] < prices[prices.length-2]) putScore += 2.2;
+                                                        }
+                                                    }
+
                                                     if (callScore === 0 && putScore === 0) {
                                                         targetBtn = (Math.random() > 0.5) ? btnCall : btnPut; // Fallback to avoid dead loop
                                                     } else {
@@ -748,6 +792,36 @@ fun DashboardScreen() {
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(statsStrategies) { strategy ->
+                            FilterChip(
+                                selected = selectedStrategies.contains(strategy),
+                                onClick = { 
+                                    if (selectedStrategies.contains(strategy)) {
+                                        if (selectedStrategies.size > 1) {
+                                            selectedStrategies = selectedStrategies - strategy
+                                        }
+                                    } else {
+                                        selectedStrategies = selectedStrategies + strategy
+                                    }
+                                },
+                                label = { Text(strategy) }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "الاستراتيجيات الجذرية الجديدة",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(radicalStrategies) { strategy ->
                             FilterChip(
                                 selected = selectedStrategies.contains(strategy),
                                 onClick = { 
