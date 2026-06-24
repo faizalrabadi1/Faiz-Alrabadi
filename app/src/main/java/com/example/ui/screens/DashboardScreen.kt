@@ -92,11 +92,11 @@ fun DashboardScreen() {
     var isBottomPanelExpanded by remember { mutableStateOf(false) }
 
     val durations = listOf(
-        "1s", "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s", "10s", 
+        "random", "1s", "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s", "10s", 
         "13s", "15s", "18s", "22s", "30s", "34s", "49s", "1m", "144s", "2m", "3m", "5m"
     )
     val durationLabels = mapOf(
-        "1s" to "ثانية واحدة", "2s" to "ثانيتين", "3s" to "3 ثواني", "4s" to "4 ثواني",
+        "random" to "عشوائي", "1s" to "ثانية واحدة", "2s" to "ثانيتين", "3s" to "3 ثواني", "4s" to "4 ثواني",
         "5s" to "5 ثواني", "6s" to "6 ثواني", "7s" to "7 ثواني", "8s" to "8 ثواني", "9s" to "9 ثواني",
         "10s" to "10 ثواني", "13s" to "13 ثانية", "15s" to "15 ثانية", "18s" to "18 ثانية",
         "22s" to "22 ثانية", "30s" to "30 ثانية", "34s" to "34 ثانية", "49s" to "49 ثانية",
@@ -235,23 +235,26 @@ fun DashboardScreen() {
                                                     martingaleMax: martingaleMax,
                                                     martingaleMultiplier: martingaleMultiplierVal || 2.0,
                                                     strategies: strats || '',
-                                                    lastBalance: null
+                                                    lastBalance: null,
+                                                    durationMode: duration
                                                 };
                                                 
                                                 if(window.botInterval) clearInterval(window.botInterval);
+                                                if(window.botTimeout) clearTimeout(window.botTimeout);
                                                 setTimeout(window.executeTradeSim, 500);
-                                                window.botInterval = setInterval(window.executeTradeSim, window.tradeDurationMs(duration) || 60000);
                                             };
                                             
                                             window.tradeDurationMs = function(durationStr) {
+                                                if (!durationStr) return 60000;
                                                 if(durationStr.includes('s')) return parseInt(durationStr)*1000 + 3000;
                                                 if(durationStr.includes('m')) return parseInt(durationStr)*60000 + 3000;
                                                 return 60000;
                                             };
                                             
                                             window.stopTrading = function() {
-                                                window.pocketBotState.isRunning = false;
+                                                if (window.pocketBotState) window.pocketBotState.isRunning = false;
                                                 if(window.botInterval) clearInterval(window.botInterval);
+                                                if(window.botTimeout) clearTimeout(window.botTimeout);
                                             };
 
                                             window.executeTradeSim = function() {
@@ -483,6 +486,23 @@ fun DashboardScreen() {
                                                         setTimeout(() => { if (targetBtn) targetBtn.click(); }, i * 300);
                                                     }
                                                     window.botInTrade = true;
+                                                }
+                                                
+                                                if (window.pocketBotState.isRunning) {
+                                                    let nextDuration = window.pocketBotState.durationMode;
+                                                    if (nextDuration === 'random') {
+                                                        const fastDurations = ['1s', '2s', '3s', '4s', '5s', '6s', '7s', '8s', '9s', '10s', '13s', '15s'];
+                                                        nextDuration = fastDurations[Math.floor(Math.random() * fastDurations.length)];
+                                                    }
+                                                    
+                                                    // Attempt to set duration visually if input exists
+                                                    if (nextDuration) {
+                                                        window.setInputValue('.time-input input, input.time, input[name="time"], .block-control__input--time input, .block-control--time input', nextDuration);
+                                                    }
+                                                    
+                                                    let waitTime = window.tradeDurationMs(nextDuration) || 60000;
+                                                    if(window.botTimeout) clearTimeout(window.botTimeout);
+                                                    window.botTimeout = setTimeout(window.executeTradeSim, waitTime);
                                                 }
                                             };
 
@@ -756,7 +776,7 @@ fun DashboardScreen() {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(durations.filter { listOf("1s", "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s", "10s", "13s", "15s").contains(it) }) { duration ->
+                        items(durations.filter { listOf("random", "1s", "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s", "10s", "13s", "15s").contains(it) }) { duration ->
                             FilterChip(
                                 selected = selectedDuration == duration,
                                 onClick = { selectedDuration = duration },
