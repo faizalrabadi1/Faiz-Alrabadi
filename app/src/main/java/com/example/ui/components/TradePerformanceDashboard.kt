@@ -33,6 +33,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.screens.TradeRecord
+import com.example.util.AppStrings
+import com.example.util.LocalAppLanguage
 import kotlin.math.max
 import kotlin.math.min
 
@@ -42,6 +44,8 @@ fun TradePerformanceDashboard(
     onSimulateTrade: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val lang = LocalAppLanguage.current
+
     // 1. Calculate Analytics
     val totalTrades = tradeHistory.size
     val wins = tradeHistory.count { it.result.lowercase() == "win" }
@@ -92,7 +96,7 @@ fun TradePerformanceDashboard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "تحليل الأداء وسجل الصفقات",
+                        text = AppStrings.performanceAnalytics(lang),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -107,7 +111,7 @@ fun TradePerformanceDashboard(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("محاكاة صفقة", style = MaterialTheme.typography.labelMedium)
+                    Text(AppStrings.simulateTrade(lang), style = MaterialTheme.typography.labelMedium)
                 }
             }
 
@@ -120,7 +124,7 @@ fun TradePerformanceDashboard(
             ) {
                 // Stat 1: Net Profit
                 StatsBox(
-                    label = "صافي الأرباح",
+                    label = AppStrings.netProfit(lang),
                     value = String.format("%.2f", netProfit) + "$",
                     color = if (netProfit >= 0) Color(0xFF4CAF50) else Color(0xFFF44336),
                     icon = if (netProfit >= 0) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
@@ -129,7 +133,7 @@ fun TradePerformanceDashboard(
 
                 // Stat 2: Win Rate
                 StatsBox(
-                    label = "نسبة النجاح",
+                    label = AppStrings.winRate(lang),
                     value = "$winRate%",
                     color = when {
                         winRate >= 70 -> Color(0xFF4CAF50)
@@ -142,7 +146,7 @@ fun TradePerformanceDashboard(
 
                 // Stat 3: Total trades count
                 StatsBox(
-                    label = "الصفقات",
+                    label = AppStrings.totalTrades(lang),
                     value = "$totalTrades",
                     color = MaterialTheme.colorScheme.primary,
                     icon = Icons.Default.ArrowUpward,
@@ -154,7 +158,7 @@ fun TradePerformanceDashboard(
 
             // Chart area
             Text(
-                text = "منحنى الأرباح التراكمي:",
+                text = AppStrings.cumulativeCurve(lang),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -176,13 +180,13 @@ fun TradePerformanceDashboard(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            "لا توجد صفقات مسجلة بعد",
+                            AppStrings.noTradesYet(lang),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            "قم بتشغيل البوت لبدء رسم المنحنى التفاعلي",
+                            AppStrings.startBotToDrawChart(lang),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
@@ -197,7 +201,7 @@ fun TradePerformanceDashboard(
 
             // Transactions History List
             Text(
-                text = "سجل الصفقات الأخيرة:",
+                text = AppStrings.recentTrades(lang),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -215,7 +219,7 @@ fun TradePerformanceDashboard(
             ) {
                 if (tradeHistory.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("بانتظار تنفيذ الصفقات الأولى...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(AppStrings.waitingFirstTrades(lang), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else {
                     LazyColumn(
@@ -257,7 +261,7 @@ fun TradePerformanceDashboard(
                                 
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        text = "المبلغ: ${trade.amount}$",
+                                        text = "${AppStrings.amountLabel(lang)} ${trade.amount}$",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.padding(end = 12.dp)
